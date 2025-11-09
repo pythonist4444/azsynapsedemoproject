@@ -1,0 +1,1358 @@
+{
+	"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"workspaceName": {
+			"type": "string",
+			"metadata": "Workspace name",
+			"defaultValue": "myworkspace44"
+		},
+		"myworkspace44-WorkspaceDefaultSqlServer_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'myworkspace44-WorkspaceDefaultSqlServer'",
+			"defaultValue": "Integrated Security=False;Encrypt=True;Connection Timeout=30;Data Source=tcp:myworkspace44.sql.azuresynapse.net,1433;Initial Catalog=@{linkedService().DBName}"
+		},
+		"myworkspace44-WorkspaceDefaultStorage_properties_typeProperties_url": {
+			"type": "string",
+			"defaultValue": "https://contosolakeadls2.dfs.core.windows.net"
+		}
+	},
+	"variables": {
+		"workspaceId": "[concat('Microsoft.Synapse/workspaces/', parameters('workspaceName'))]"
+	},
+	"resources": [
+		{
+			"name": "[concat(parameters('workspaceName'), '/myworkspace44-WorkspaceDefaultSqlServer')]",
+			"type": "Microsoft.Synapse/workspaces/linkedServices",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"parameters": {
+					"DBName": {
+						"type": "String"
+					}
+				},
+				"annotations": [],
+				"type": "AzureSqlDW",
+				"typeProperties": {
+					"connectionString": "[parameters('myworkspace44-WorkspaceDefaultSqlServer_connectionString')]"
+				},
+				"connectVia": {
+					"referenceName": "AutoResolveIntegrationRuntime",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/integrationRuntimes/AutoResolveIntegrationRuntime')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/myworkspace44-WorkspaceDefaultStorage')]",
+			"type": "Microsoft.Synapse/workspaces/linkedServices",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"annotations": [],
+				"type": "AzureBlobFS",
+				"typeProperties": {
+					"url": "[parameters('myworkspace44-WorkspaceDefaultStorage_properties_typeProperties_url')]"
+				},
+				"connectVia": {
+					"referenceName": "AutoResolveIntegrationRuntime",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/integrationRuntimes/AutoResolveIntegrationRuntime')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/AutoResolveIntegrationRuntime')]",
+			"type": "Microsoft.Synapse/workspaces/integrationRuntimes",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"type": "Managed",
+				"typeProperties": {
+					"computeProperties": {
+						"location": "AutoResolve",
+						"dataFlowProperties": {
+							"computeType": "General",
+							"coreCount": 8,
+							"timeToLive": 0
+						}
+					}
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/WorkspaceSystemIdentity')]",
+			"type": "Microsoft.Synapse/workspaces/credentials",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"type": "ManagedIdentity",
+				"typeProperties": {}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/SQL script 1')]",
+			"type": "Microsoft.Synapse/workspaces/sqlscripts",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"content": {
+					"query": "-- This is auto-generated code\nSELECT\n    TOP 100 *\nFROM\n    OPENROWSET(\n        BULK 'https://contosolakeadls2.dfs.core.windows.net/users/NYCTripSmall.parquet',\n        FORMAT = 'PARQUET'\n    ) AS [result];\nGO\n\nCREATE DATABASE DataExplorationDB \n                COLLATE Latin1_General_100_BIN2_UTF8;\nGO\n\nUSE DataExplorationDB;\nGO\n\nCREATE EXTERNAL DATA SOURCE ContosoLake\nWITH ( LOCATION = 'https://contosolakeadls2.dfs.core.windows.net');\nGO\n\nCREATE LOGIN data_explorer WITH PASSWORD = 'Zealous44#';\nGO\n\nCREATE USER data_explorer FOR LOGIN data_explorer;\nGO\n\nGRANT ADMINISTER DATABASE BULK OPERATIONS TO data_explorer;\nGO\n\nSELECT\n    TOP 100 *\nFROM\n    OPENROWSET(\n            BULK '/users/NYCTripSmall.parquet',\n            DATA_SOURCE = 'ContosoLake',\n            FORMAT='PARQUET'\n    ) AS [result];\nGO\n\n",
+					"metadata": {
+						"language": "sql"
+					},
+					"currentConnection": {
+						"databaseName": "DataExplorationDB",
+						"poolName": "Built-in"
+					},
+					"resultLimit": 5000
+				},
+				"type": "SqlQuery"
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/SQL script 2')]",
+			"type": "Microsoft.Synapse/workspaces/sqlscripts",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"content": {
+					"query": "IF NOT EXISTS (SELECT * FROM sys.objects O JOIN sys.schemas S ON O.schema_id = S.schema_id WHERE O.NAME = 'NYCTaxiTripSmall' AND O.TYPE = 'U' AND S.NAME = 'dbo')\nCREATE TABLE dbo.NYCTaxiTripSmall\n    (\n    [VendorID] bigint, \n    [store_and_fwd_flag] nvarchar(1) NULL, \n    [RatecodeID] float NULL, \n    [PULocationID] bigint NULL,  \n    [DOLocationID] bigint NULL, \n    [passenger_count] float NULL, \n    [trip_distance] float NULL, \n    [fare_amount] float NULL, \n    [extra] float NULL, \n    [mta_tax] float NULL, \n    [tip_amount] float NULL, \n    [tolls_amount] float NULL, \n    [ehail_fee] float NULL, \n    [improvement_surcharge] float NULL, \n    [total_amount] float NULL, \n    [payment_type] float NULL, \n    [trip_type] float NULL, \n    [congestion_surcharge] float  NULL\n    )\nWITH\n    (\n    DISTRIBUTION = ROUND_ROBIN,\n     CLUSTERED COLUMNSTORE INDEX\n     -- HEAP\n    )\nGO\n\nCOPY INTO dbo.NYCTaxiTripSmall\n(VendorID 1, store_and_fwd_flag 4, RatecodeID 5,  PULocationID 6 , DOLocationID 7,  \n passenger_count 8,trip_distance 9, fare_amount 10, extra 11, mta_tax 12, tip_amount 13, \n tolls_amount 14, ehail_fee 15, improvement_surcharge 16, total_amount 17, \n payment_type 18, trip_type 19, congestion_surcharge 20 )\nFROM 'https://contosolakeadls2.dfs.core.windows.net/users/NYCTripSmall.parquet'\nWITH\n(\n    FILE_TYPE = 'PARQUET'\n    ,MAXERRORS = 0\n    ,IDENTITY_INSERT = 'OFF'\n    ,AUTO_CREATE_TABLE ='ON'\n)",
+					"metadata": {
+						"language": "sql"
+					},
+					"currentConnection": {
+						"databaseName": "SQLPOOL1",
+						"poolName": "SQLPOOL1"
+					},
+					"resultLimit": 5000
+				},
+				"type": "SqlQuery"
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/SparkNotebook 1')]",
+			"type": "Microsoft.Synapse/workspaces/notebooks",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"nbformat": 4,
+				"nbformat_minor": 2,
+				"bigDataPool": {
+					"referenceName": "Spark1",
+					"type": "BigDataPoolReference"
+				},
+				"sessionProperties": {
+					"driverMemory": "28g",
+					"driverCores": 4,
+					"executorMemory": "28g",
+					"executorCores": 4,
+					"numExecutors": 2,
+					"runAsWorkspaceSystemIdentity": false,
+					"conf": {
+						"spark.dynamicAllocation.enabled": "false",
+						"spark.dynamicAllocation.minExecutors": "2",
+						"spark.dynamicAllocation.maxExecutors": "2",
+						"spark.autotune.trackingId": "429b12e3-3f68-4fec-a1b6-1592d562adce"
+					}
+				},
+				"metadata": {
+					"saveOutput": true,
+					"synapse_widget": {
+						"version": "0.1",
+						"state": {
+							"05b75b26-b8ab-4d58-9350-a9bbd4254e58": {
+								"type": "Synapse.DataFrame",
+								"sync_state": {
+									"table": {
+										"rows": [
+											{
+												"0": "2",
+												"1": "2025-09-01 00:06:49",
+												"2": "2025-09-01 00:17:31",
+												"3": "N",
+												"4": "1",
+												"5": "74",
+												"6": "263",
+												"7": "1",
+												"8": "1.86",
+												"9": "12.8",
+												"10": "1.0",
+												"11": "0.5",
+												"12": "3.06",
+												"13": "0.0",
+												"15": "1.0",
+												"16": "18.36",
+												"17": "1",
+												"18": "1",
+												"19": "0.0",
+												"20": "0.0"
+											},
+											{
+												"0": "2",
+												"1": "2025-09-01 00:20:15",
+												"2": "2025-09-01 00:40:57",
+												"3": "N",
+												"4": "1",
+												"5": "255",
+												"6": "261",
+												"7": "1",
+												"8": "5.96",
+												"9": "27.5",
+												"10": "1.0",
+												"11": "0.5",
+												"12": "0.0",
+												"13": "0.0",
+												"15": "1.0",
+												"16": "33.5",
+												"17": "1",
+												"18": "1",
+												"19": "2.75",
+												"20": "0.75"
+											},
+											{
+												"0": "2",
+												"1": "2025-09-01 00:35:58",
+												"2": "2025-09-01 00:36:01",
+												"3": "N",
+												"4": "5",
+												"5": "130",
+												"6": "130",
+												"7": "1",
+												"8": "0.01",
+												"9": "11.0",
+												"10": "0.0",
+												"11": "0.0",
+												"12": "0.08",
+												"13": "0.0",
+												"15": "1.0",
+												"16": "12.08",
+												"17": "1",
+												"18": "2",
+												"19": "0.0",
+												"20": "0.0"
+											},
+											{
+												"0": "2",
+												"1": "2025-09-01 00:13:28",
+												"2": "2025-09-01 00:17:11",
+												"3": "N",
+												"4": "1",
+												"5": "74",
+												"6": "75",
+												"7": "1",
+												"8": "1.36",
+												"9": "7.2",
+												"10": "1.0",
+												"11": "0.5",
+												"12": "1.94",
+												"13": "0.0",
+												"15": "1.0",
+												"16": "11.64",
+												"17": "1",
+												"18": "1",
+												"19": "0.0",
+												"20": "0.0"
+											},
+											{
+												"0": "2",
+												"1": "2025-09-01 00:41:47",
+												"2": "2025-09-01 00:45:10",
+												"3": "N",
+												"4": "1",
+												"5": "240",
+												"6": "200",
+												"7": "1",
+												"8": "0.98",
+												"9": "6.5",
+												"10": "1.0",
+												"11": "0.5",
+												"12": "2.25",
+												"13": "0.0",
+												"15": "1.0",
+												"16": "11.25",
+												"17": "1",
+												"18": "1",
+												"19": "0.0",
+												"20": "0.0"
+											},
+											{
+												"0": "2",
+												"1": "2025-09-01 00:04:10",
+												"2": "2025-09-01 00:29:29",
+												"3": "N",
+												"4": "1",
+												"5": "93",
+												"6": "234",
+												"7": "1",
+												"8": "13.08",
+												"9": "52.0",
+												"10": "1.0",
+												"11": "0.5",
+												"12": "14.5",
+												"13": "0.0",
+												"15": "1.0",
+												"16": "72.5",
+												"17": "1",
+												"18": "1",
+												"19": "2.75",
+												"20": "0.75"
+											},
+											{
+												"0": "2",
+												"1": "2025-09-01 00:23:09",
+												"2": "2025-09-01 00:47:30",
+												"3": "N",
+												"4": "1",
+												"5": "243",
+												"6": "238",
+												"7": "3",
+												"8": "5.95",
+												"9": "29.6",
+												"10": "1.0",
+												"11": "0.5",
+												"12": "5.0",
+												"13": "0.0",
+												"15": "1.0",
+												"16": "39.85",
+												"17": "1",
+												"18": "1",
+												"19": "2.75",
+												"20": "0.0"
+											},
+											{
+												"0": "2",
+												"1": "2025-09-01 22:24:20",
+												"2": "2025-09-02 00:32:11",
+												"3": "N",
+												"4": "5",
+												"5": "95",
+												"6": "95",
+												"7": "5",
+												"8": "0.0",
+												"9": "10.0",
+												"10": "0.0",
+												"11": "0.0",
+												"12": "0.0",
+												"13": "0.0",
+												"15": "0.0",
+												"16": "10.0",
+												"17": "1",
+												"18": "2",
+												"19": "0.0",
+												"20": "0.0"
+											},
+											{
+												"0": "2",
+												"1": "2025-09-01 00:04:36",
+												"2": "2025-09-01 00:28:06",
+												"3": "N",
+												"4": "5",
+												"5": "93",
+												"6": "65",
+												"7": "1",
+												"8": "12.17",
+												"9": "60.0",
+												"10": "0.0",
+												"11": "0.0",
+												"12": "12.2",
+												"13": "0.0",
+												"15": "1.0",
+												"16": "73.2",
+												"17": "1",
+												"18": "2",
+												"19": "0.0",
+												"20": "0.0"
+											},
+											{
+												"0": "2",
+												"1": "2025-09-01 00:21:24",
+												"2": "2025-09-01 00:21:40",
+												"3": "N",
+												"4": "5",
+												"5": "80",
+												"6": "80",
+												"7": "1",
+												"8": "0.02",
+												"9": "100.0",
+												"10": "0.0",
+												"11": "0.0",
+												"12": "0.0",
+												"13": "0.0",
+												"15": "1.0",
+												"16": "101.0",
+												"17": "1",
+												"18": "2",
+												"19": "0.0",
+												"20": "0.0"
+											}
+										],
+										"schema": [
+											{
+												"key": "0",
+												"name": "VendorID",
+												"type": "int"
+											},
+											{
+												"key": "1",
+												"name": "lpep_pickup_datetime",
+												"type": "timestamp_ntz"
+											},
+											{
+												"key": "2",
+												"name": "lpep_dropoff_datetime",
+												"type": "timestamp_ntz"
+											},
+											{
+												"key": "3",
+												"name": "store_and_fwd_flag",
+												"type": "string"
+											},
+											{
+												"key": "4",
+												"name": "RatecodeID",
+												"type": "bigint"
+											},
+											{
+												"key": "5",
+												"name": "PULocationID",
+												"type": "int"
+											},
+											{
+												"key": "6",
+												"name": "DOLocationID",
+												"type": "int"
+											},
+											{
+												"key": "7",
+												"name": "passenger_count",
+												"type": "bigint"
+											},
+											{
+												"key": "8",
+												"name": "trip_distance",
+												"type": "double"
+											},
+											{
+												"key": "9",
+												"name": "fare_amount",
+												"type": "double"
+											},
+											{
+												"key": "10",
+												"name": "extra",
+												"type": "double"
+											},
+											{
+												"key": "11",
+												"name": "mta_tax",
+												"type": "double"
+											},
+											{
+												"key": "12",
+												"name": "tip_amount",
+												"type": "double"
+											},
+											{
+												"key": "13",
+												"name": "tolls_amount",
+												"type": "double"
+											},
+											{
+												"key": "14",
+												"name": "ehail_fee",
+												"type": "double"
+											},
+											{
+												"key": "15",
+												"name": "improvement_surcharge",
+												"type": "double"
+											},
+											{
+												"key": "16",
+												"name": "total_amount",
+												"type": "double"
+											},
+											{
+												"key": "17",
+												"name": "payment_type",
+												"type": "bigint"
+											},
+											{
+												"key": "18",
+												"name": "trip_type",
+												"type": "bigint"
+											},
+											{
+												"key": "19",
+												"name": "congestion_surcharge",
+												"type": "double"
+											},
+											{
+												"key": "20",
+												"name": "cbd_congestion_fee",
+												"type": "double"
+											}
+										],
+										"truncated": false
+									},
+									"isSummary": false,
+									"language": "scala",
+									"wranglerEntryContext": {
+										"dataframeType": "pyspark"
+									}
+								},
+								"persist_state": {
+									"view": {
+										"type": "details",
+										"chartOptions": {
+											"chartType": "bar",
+											"aggregationType": "sum",
+											"categoryFieldKeys": [
+												"3"
+											],
+											"seriesFieldKeys": [
+												"0"
+											],
+											"isStacked": false
+										}
+									}
+								}
+							},
+							"59d94e6d-7c18-45d9-a91b-0fdfc76e5436": {
+								"type": "Synapse.DataFrame",
+								"sync_state": {
+									"table": {
+										"rows": [
+											{
+												"0": "2",
+												"1": "2025-09-01 00:06:49",
+												"2": "2025-09-01 00:17:31",
+												"3": "N",
+												"4": "1",
+												"5": "74",
+												"6": "263",
+												"7": "1",
+												"8": "1.86",
+												"9": "12.8",
+												"10": "1.0",
+												"11": "0.5",
+												"12": "3.06",
+												"13": "0.0",
+												"15": "1.0",
+												"16": "18.36",
+												"17": "1",
+												"18": "1",
+												"19": "0.0",
+												"20": "0.0"
+											},
+											{
+												"0": "2",
+												"1": "2025-09-01 00:20:15",
+												"2": "2025-09-01 00:40:57",
+												"3": "N",
+												"4": "1",
+												"5": "255",
+												"6": "261",
+												"7": "1",
+												"8": "5.96",
+												"9": "27.5",
+												"10": "1.0",
+												"11": "0.5",
+												"12": "0.0",
+												"13": "0.0",
+												"15": "1.0",
+												"16": "33.5",
+												"17": "1",
+												"18": "1",
+												"19": "2.75",
+												"20": "0.75"
+											},
+											{
+												"0": "2",
+												"1": "2025-09-01 00:35:58",
+												"2": "2025-09-01 00:36:01",
+												"3": "N",
+												"4": "5",
+												"5": "130",
+												"6": "130",
+												"7": "1",
+												"8": "0.01",
+												"9": "11.0",
+												"10": "0.0",
+												"11": "0.0",
+												"12": "0.08",
+												"13": "0.0",
+												"15": "1.0",
+												"16": "12.08",
+												"17": "1",
+												"18": "2",
+												"19": "0.0",
+												"20": "0.0"
+											},
+											{
+												"0": "2",
+												"1": "2025-09-01 00:13:28",
+												"2": "2025-09-01 00:17:11",
+												"3": "N",
+												"4": "1",
+												"5": "74",
+												"6": "75",
+												"7": "1",
+												"8": "1.36",
+												"9": "7.2",
+												"10": "1.0",
+												"11": "0.5",
+												"12": "1.94",
+												"13": "0.0",
+												"15": "1.0",
+												"16": "11.64",
+												"17": "1",
+												"18": "1",
+												"19": "0.0",
+												"20": "0.0"
+											},
+											{
+												"0": "2",
+												"1": "2025-09-01 00:41:47",
+												"2": "2025-09-01 00:45:10",
+												"3": "N",
+												"4": "1",
+												"5": "240",
+												"6": "200",
+												"7": "1",
+												"8": "0.98",
+												"9": "6.5",
+												"10": "1.0",
+												"11": "0.5",
+												"12": "2.25",
+												"13": "0.0",
+												"15": "1.0",
+												"16": "11.25",
+												"17": "1",
+												"18": "1",
+												"19": "0.0",
+												"20": "0.0"
+											},
+											{
+												"0": "2",
+												"1": "2025-09-01 00:04:10",
+												"2": "2025-09-01 00:29:29",
+												"3": "N",
+												"4": "1",
+												"5": "93",
+												"6": "234",
+												"7": "1",
+												"8": "13.08",
+												"9": "52.0",
+												"10": "1.0",
+												"11": "0.5",
+												"12": "14.5",
+												"13": "0.0",
+												"15": "1.0",
+												"16": "72.5",
+												"17": "1",
+												"18": "1",
+												"19": "2.75",
+												"20": "0.75"
+											},
+											{
+												"0": "2",
+												"1": "2025-09-01 00:23:09",
+												"2": "2025-09-01 00:47:30",
+												"3": "N",
+												"4": "1",
+												"5": "243",
+												"6": "238",
+												"7": "3",
+												"8": "5.95",
+												"9": "29.6",
+												"10": "1.0",
+												"11": "0.5",
+												"12": "5.0",
+												"13": "0.0",
+												"15": "1.0",
+												"16": "39.85",
+												"17": "1",
+												"18": "1",
+												"19": "2.75",
+												"20": "0.0"
+											},
+											{
+												"0": "2",
+												"1": "2025-09-01 22:24:20",
+												"2": "2025-09-02 00:32:11",
+												"3": "N",
+												"4": "5",
+												"5": "95",
+												"6": "95",
+												"7": "5",
+												"8": "0.0",
+												"9": "10.0",
+												"10": "0.0",
+												"11": "0.0",
+												"12": "0.0",
+												"13": "0.0",
+												"15": "0.0",
+												"16": "10.0",
+												"17": "1",
+												"18": "2",
+												"19": "0.0",
+												"20": "0.0"
+											},
+											{
+												"0": "2",
+												"1": "2025-09-01 00:04:36",
+												"2": "2025-09-01 00:28:06",
+												"3": "N",
+												"4": "5",
+												"5": "93",
+												"6": "65",
+												"7": "1",
+												"8": "12.17",
+												"9": "60.0",
+												"10": "0.0",
+												"11": "0.0",
+												"12": "12.2",
+												"13": "0.0",
+												"15": "1.0",
+												"16": "73.2",
+												"17": "1",
+												"18": "2",
+												"19": "0.0",
+												"20": "0.0"
+											},
+											{
+												"0": "2",
+												"1": "2025-09-01 00:21:24",
+												"2": "2025-09-01 00:21:40",
+												"3": "N",
+												"4": "5",
+												"5": "80",
+												"6": "80",
+												"7": "1",
+												"8": "0.02",
+												"9": "100.0",
+												"10": "0.0",
+												"11": "0.0",
+												"12": "0.0",
+												"13": "0.0",
+												"15": "1.0",
+												"16": "101.0",
+												"17": "1",
+												"18": "2",
+												"19": "0.0",
+												"20": "0.0"
+											},
+											{
+												"0": "2",
+												"1": "2025-09-01 00:32:42",
+												"2": "2025-09-01 00:54:17",
+												"3": "N",
+												"4": "1",
+												"5": "130",
+												"6": "179",
+												"7": "1",
+												"8": "10.68",
+												"9": "43.6",
+												"10": "1.0",
+												"11": "0.5",
+												"12": "0.0",
+												"13": "0.0",
+												"15": "1.0",
+												"16": "46.1",
+												"17": "1",
+												"18": "1",
+												"19": "0.0",
+												"20": "0.0"
+											},
+											{
+												"0": "2",
+												"1": "2025-09-01 00:07:31",
+												"2": "2025-09-01 00:24:24",
+												"3": "N",
+												"4": "1",
+												"5": "74",
+												"6": "223",
+												"7": "1",
+												"8": "4.5",
+												"9": "23.3",
+												"10": "1.0",
+												"11": "0.5",
+												"12": "6.55",
+												"13": "6.94",
+												"15": "1.0",
+												"16": "39.29",
+												"17": "1",
+												"18": "1",
+												"19": "0.0",
+												"20": "0.0"
+											},
+											{
+												"0": "2",
+												"1": "2025-08-31 23:54:38",
+												"2": "2025-09-01 00:18:26",
+												"3": "N",
+												"4": "1",
+												"5": "93",
+												"6": "65",
+												"7": "1",
+												"8": "11.34",
+												"9": "45.7",
+												"10": "1.0",
+												"11": "0.5",
+												"12": "6.0",
+												"13": "0.0",
+												"15": "1.0",
+												"16": "54.2",
+												"17": "1",
+												"18": "1",
+												"19": "0.0",
+												"20": "0.0"
+											},
+											{
+												"0": "2",
+												"1": "2025-09-01 00:25:37",
+												"2": "2025-09-01 00:39:23",
+												"3": "N",
+												"4": "1",
+												"5": "95",
+												"6": "173",
+												"7": "1",
+												"8": "2.39",
+												"9": "15.6",
+												"10": "1.0",
+												"11": "0.5",
+												"12": "0.0",
+												"13": "0.0",
+												"15": "1.0",
+												"16": "18.1",
+												"17": "2",
+												"18": "1",
+												"19": "0.0",
+												"20": "0.0"
+											},
+											{
+												"0": "2",
+												"1": "2025-09-01 00:05:36",
+												"2": "2025-09-01 00:06:44",
+												"3": "N",
+												"4": "5",
+												"5": "65",
+												"6": "65",
+												"7": "1",
+												"8": "0.0",
+												"9": "12.0",
+												"10": "0.0",
+												"11": "0.0",
+												"12": "2.6",
+												"13": "0.0",
+												"15": "1.0",
+												"16": "15.6",
+												"17": "1",
+												"18": "2",
+												"19": "0.0",
+												"20": "0.0"
+											},
+											{
+												"0": "2",
+												"1": "2025-09-01 00:37:06",
+												"2": "2025-09-01 00:37:09",
+												"3": "N",
+												"4": "5",
+												"5": "265",
+												"6": "264",
+												"7": "1",
+												"8": "0.0",
+												"9": "55.0",
+												"10": "0.0",
+												"11": "0.0",
+												"12": "0.0",
+												"13": "0.0",
+												"15": "1.0",
+												"16": "56.0",
+												"17": "1",
+												"18": "2",
+												"19": "0.0",
+												"20": "0.0"
+											},
+											{
+												"0": "2",
+												"1": "2025-09-01 00:23:01",
+												"2": "2025-09-01 00:26:24",
+												"3": "N",
+												"4": "1",
+												"5": "95",
+												"6": "95",
+												"7": "1",
+												"8": "0.63",
+												"9": "5.8",
+												"10": "1.0",
+												"11": "0.5",
+												"12": "0.0",
+												"13": "0.0",
+												"15": "1.0",
+												"16": "8.3",
+												"17": "2",
+												"18": "1",
+												"19": "0.0",
+												"20": "0.0"
+											},
+											{
+												"0": "2",
+												"1": "2025-09-01 00:19:03",
+												"2": "2025-09-01 00:27:50",
+												"3": "N",
+												"4": "1",
+												"5": "157",
+												"6": "112",
+												"7": "1",
+												"8": "1.95",
+												"9": "11.4",
+												"10": "1.0",
+												"11": "0.5",
+												"12": "2.78",
+												"13": "0.0",
+												"15": "1.0",
+												"16": "16.68",
+												"17": "1",
+												"18": "1",
+												"19": "0.0",
+												"20": "0.0"
+											},
+											{
+												"0": "2",
+												"1": "2025-09-01 00:02:10",
+												"2": "2025-09-01 00:02:13",
+												"3": "N",
+												"4": "5",
+												"5": "37",
+												"6": "264",
+												"7": "1",
+												"8": "0.0",
+												"9": "100.0",
+												"10": "0.0",
+												"11": "0.0",
+												"12": "5.0",
+												"13": "0.0",
+												"15": "1.0",
+												"16": "106.0",
+												"17": "1",
+												"18": "2",
+												"19": "0.0",
+												"20": "0.0"
+											},
+											{
+												"0": "2",
+												"1": "2025-09-01 00:57:24",
+												"2": "2025-09-01 01:03:46",
+												"3": "N",
+												"4": "1",
+												"5": "255",
+												"6": "112",
+												"7": "1",
+												"8": "0.66",
+												"9": "7.2",
+												"10": "1.0",
+												"11": "0.5",
+												"12": "1.94",
+												"13": "0.0",
+												"15": "1.0",
+												"16": "11.64",
+												"17": "1",
+												"18": "1",
+												"19": "0.0",
+												"20": "0.0"
+											}
+										],
+										"schema": [
+											{
+												"key": "0",
+												"name": "VendorID",
+												"type": "int"
+											},
+											{
+												"key": "1",
+												"name": "lpep_pickup_datetime",
+												"type": "timestamp_ntz"
+											},
+											{
+												"key": "2",
+												"name": "lpep_dropoff_datetime",
+												"type": "timestamp_ntz"
+											},
+											{
+												"key": "3",
+												"name": "store_and_fwd_flag",
+												"type": "string"
+											},
+											{
+												"key": "4",
+												"name": "RatecodeID",
+												"type": "bigint"
+											},
+											{
+												"key": "5",
+												"name": "PULocationID",
+												"type": "int"
+											},
+											{
+												"key": "6",
+												"name": "DOLocationID",
+												"type": "int"
+											},
+											{
+												"key": "7",
+												"name": "passenger_count",
+												"type": "bigint"
+											},
+											{
+												"key": "8",
+												"name": "trip_distance",
+												"type": "double"
+											},
+											{
+												"key": "9",
+												"name": "fare_amount",
+												"type": "double"
+											},
+											{
+												"key": "10",
+												"name": "extra",
+												"type": "double"
+											},
+											{
+												"key": "11",
+												"name": "mta_tax",
+												"type": "double"
+											},
+											{
+												"key": "12",
+												"name": "tip_amount",
+												"type": "double"
+											},
+											{
+												"key": "13",
+												"name": "tolls_amount",
+												"type": "double"
+											},
+											{
+												"key": "14",
+												"name": "ehail_fee",
+												"type": "double"
+											},
+											{
+												"key": "15",
+												"name": "improvement_surcharge",
+												"type": "double"
+											},
+											{
+												"key": "16",
+												"name": "total_amount",
+												"type": "double"
+											},
+											{
+												"key": "17",
+												"name": "payment_type",
+												"type": "bigint"
+											},
+											{
+												"key": "18",
+												"name": "trip_type",
+												"type": "bigint"
+											},
+											{
+												"key": "19",
+												"name": "congestion_surcharge",
+												"type": "double"
+											},
+											{
+												"key": "20",
+												"name": "cbd_congestion_fee",
+												"type": "double"
+											}
+										],
+										"truncated": false
+									},
+									"isSummary": false,
+									"language": "scala",
+									"wranglerEntryContext": {
+										"dataframeType": "pyspark"
+									}
+								},
+								"persist_state": {
+									"view": {
+										"type": "details",
+										"chartOptions": {
+											"chartType": "bar",
+											"aggregationType": "sum",
+											"categoryFieldKeys": [
+												"3"
+											],
+											"seriesFieldKeys": [
+												"0"
+											],
+											"isStacked": false
+										}
+									}
+								}
+							},
+							"313c4755-ece8-4773-8f66-a2c684109353": {
+								"type": "Synapse.DataFrame",
+								"sync_state": {
+									"table": {
+										"rows": [
+											{
+												"0": "1",
+												"1": "144589.51000000015",
+												"2": "4.159293214049425"
+											},
+											{
+												"0": "2",
+												"1": "16210.350000000022",
+												"2": "3.6575699458483806"
+											},
+											{
+												"0": "3",
+												"1": "2008.9300000000003",
+												"2": "3.639365942028986"
+											},
+											{
+												"0": "4",
+												"1": "1234.7399999999996",
+												"2": "4.938959999999998"
+											},
+											{
+												"0": "5",
+												"1": "2665.4100000000053",
+												"2": "3.192107784431144"
+											},
+											{
+												"0": "6",
+												"1": "1493.669999999999",
+												"2": "2.6343386243386226"
+											},
+											{
+												"0": "7",
+												"1": "59.85",
+												"2": "8.55"
+											},
+											{
+												"0": "8",
+												"1": "171.22",
+												"2": "8.153333333333332"
+											},
+											{
+												"0": "9",
+												"1": "46.49999999999999",
+												"2": "6.6428571428571415"
+											}
+										],
+										"schema": [
+											{
+												"key": "0",
+												"name": "passenger_count",
+												"type": "bigint"
+											},
+											{
+												"key": "1",
+												"name": "SumTripDistance",
+												"type": "double"
+											},
+											{
+												"key": "2",
+												"name": "AvgTripDistance",
+												"type": "double"
+											}
+										],
+										"truncated": false
+									},
+									"isSummary": false,
+									"language": "scala",
+									"wranglerEntryContext": {
+										"candidateVariableNames": [
+											"df"
+										],
+										"dataframeType": "pyspark"
+									}
+								},
+								"persist_state": {
+									"view": {
+										"type": "details",
+										"chartOptions": {
+											"chartType": "bar",
+											"aggregationType": "sum",
+											"categoryFieldKeys": [
+												"1"
+											],
+											"seriesFieldKeys": [
+												"0"
+											],
+											"isStacked": false
+										}
+									}
+								}
+							}
+						}
+					},
+					"enableDebugMode": false,
+					"language_info": {
+						"name": "python"
+					},
+					"a365ComputeOptions": {
+						"id": "/subscriptions/505f5c61-58a8-4a72-b667-fc9ba4fe734c/resourceGroups/RG-AzureSpotifyProject/providers/Microsoft.Synapse/workspaces/myworkspace44/bigDataPools/Spark1",
+						"name": "Spark1",
+						"type": "Spark",
+						"endpoint": "https://myworkspace44.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/Spark1",
+						"auth": {
+							"type": "AAD",
+							"authResource": "https://dev.azuresynapse.net",
+							"authHeader": null
+						},
+						"sparkVersion": "3.5",
+						"nodeCount": 10,
+						"cores": 4,
+						"memory": 28,
+						"extraHeader": null
+					},
+					"sessionKeepAliveTimeout": 30
+				},
+				"cells": [
+					{
+						"cell_type": "code",
+						"metadata": {
+							"microsoft": {
+								"language": "python"
+							},
+							"collapsed": false
+						},
+						"source": [
+							"%%pyspark\r\n",
+							"df = spark.read.load('abfss://users@contosolakeadls2.dfs.core.windows.net/NYCTripSmall.parquet', format='parquet')\r\n",
+							"display(df.limit(10))"
+						],
+						"outputs": [],
+						"execution_count": 1
+					},
+					{
+						"cell_type": "code",
+						"metadata": {
+							"microsoft": {
+								"language": "python"
+							}
+						},
+						"source": [
+							"%%pyspark\r\n",
+							"df.printSchema()"
+						],
+						"outputs": [],
+						"execution_count": 2
+					},
+					{
+						"cell_type": "code",
+						"metadata": {
+							"microsoft": {
+								"language": "python"
+							}
+						},
+						"source": [
+							"%%pyspark\r\n",
+							"spark.sql(\"CREATE DATABASE IF NOT EXISTS nyctaxi\")\r\n",
+							"df.write.mode(\"overwrite\").saveAsTable(\"nyctaxi.trip\")"
+						],
+						"outputs": [],
+						"execution_count": 3
+					},
+					{
+						"cell_type": "code",
+						"metadata": {
+							"microsoft": {
+								"language": "python"
+							},
+							"collapsed": false
+						},
+						"source": [
+							"%%pyspark\r\n",
+							"df = spark.sql(\"SELECT * FROM nyctaxi.trip\")\r\n",
+							"display(df.limit(20))"
+						],
+						"outputs": [],
+						"execution_count": 6
+					},
+					{
+						"cell_type": "code",
+						"metadata": {
+							"microsoft": {
+								"language": "python"
+							},
+							"collapsed": false
+						},
+						"source": [
+							"%%pyspark\r\n",
+							"df = spark.sql(\"\"\"\r\n",
+							"   SELECT passenger_count,\r\n",
+							"       SUM(trip_distance) as SumTripDistance,\r\n",
+							"       AVG(trip_distance) as AvgTripDistance\r\n",
+							"   FROM nyctaxi.trip\r\n",
+							"   WHERE trip_distance > 0 AND passenger_count > 0\r\n",
+							"   GROUP BY passenger_count\r\n",
+							"   ORDER BY passenger_count\r\n",
+							"\"\"\") \r\n",
+							"display(df)\r\n",
+							"df.write.saveAsTable(\"nyctaxi.passengercountstats\")"
+						],
+						"outputs": [],
+						"execution_count": 7
+					},
+					{
+						"cell_type": "code",
+						"source": [
+							""
+						],
+						"outputs": []
+					}
+				]
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/Spark1')]",
+			"type": "Microsoft.Synapse/workspaces/bigDataPools",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"autoPause": {
+					"enabled": true,
+					"delayInMinutes": 15
+				},
+				"autoScale": {
+					"enabled": true,
+					"maxNodeCount": 3,
+					"minNodeCount": 3
+				},
+				"nodeCount": 10,
+				"nodeSize": "Small",
+				"nodeSizeFamily": "MemoryOptimized",
+				"sparkVersion": "3.5",
+				"isComputeIsolationEnabled": false,
+				"sessionLevelPackagesEnabled": false,
+				"annotations": []
+			},
+			"dependsOn": [],
+			"location": "uksouth"
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/SQLPOOL1')]",
+			"type": "Microsoft.Synapse/workspaces/sqlPools",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"collation": "SQL_Latin1_General_CP1_CI_AS",
+				"maxSizeBytes": 263882790666240,
+				"annotations": []
+			},
+			"dependsOn": [],
+			"location": "uksouth"
+		}
+	]
+}
