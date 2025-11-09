@@ -18,7 +18,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "65acf6cb-9829-48f6-8818-6ec088fe7090"
+				"spark.autotune.trackingId": "7171a7cb-ef87-482b-8544-b0b5e6a43d8d"
 			}
 		},
 		"metadata": {
@@ -145,13 +145,6 @@
 					"df.write.mode(\"overwrite\").parquet(\"/NYCTaxi/PassengerCountStats_parquetformat\")"
 				],
 				"execution_count": 1
-			},
-			{
-				"cell_type": "code",
-				"source": [
-					""
-				],
-				"execution_count": null
 			}
 		]
 	}
